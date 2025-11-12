@@ -158,14 +158,14 @@ def train(config, path, seed):
     ])
 
 
-    train_dataset = datasetdict[config['dataset']](root='files/scratch', train=True, transform=transform_train,)
+    train_dataset = datasetdict[config['dataset']](train=True, transform=transform_train,)
     train_loader = DataLoader(train_dataset,
                               batch_size=64,
                               shuffle=True,
                               drop_last=True,
                               num_workers=16,
                               pin_memory=True)
-    test_dataset = datasetdict[config['dataset']](root='files/scratch', train=False, transform=transform_test,)
+    test_dataset = datasetdict[config['dataset']](train=False, transform=transform_test,)
     test_loader = DataLoader(test_dataset,
                               batch_size = 1024,
                               shuffle=True,
