@@ -20,7 +20,7 @@ import pandas as pd
 from itertools import product
 
 import torchvision
-from torchvision.datasets import CIFAR10, CIFAR100, CelebA, ImageNet
+from torchvision.datasets import CIFAR10, CIFAR100, CelebA, ImageFolder
 from pathlib import Path
 
 import torch
@@ -50,42 +50,52 @@ class CelebAThreeAttrClassification(CelebA):
 
         return image, torch.tensor(class_label, dtype=torch.long)
 
+class TinyImagenet(ImageFolder):
+   def __init__(self, root='files/tiny-224', transform = None, target_transform = None, loader = ..., is_valid_file = None, allow_empty = False):
+      super().__init__(root, transform, target_transform, loader, is_valid_file, allow_empty)
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class dataset(Enum):
     cifar10 = 'cifar10'
     cifar100 = 'cifar100'
     celebA = 'celebA'
+    tinyimagenet = 'tiny_imagenet'
 
 
 datasetdict = {
     dataset.cifar10: CIFAR10,
     dataset.cifar100: CIFAR100,
     dataset.celebA: CelebAThreeAttrClassification,
+    dataset.tinyimagenet: TinyImagenet
 }
 
 dataset_channels = {
     dataset.cifar10: 3,
     dataset.cifar100: 3,
     dataset.celebA: 3,
+    dataset.tinyimagenet: 3
 }
 
 dataset_input_sizes = {
     dataset.cifar10: (32,32),
     dataset.cifar100: (32,32),
-    dataset.celebA: (128,128),   
+    dataset.celebA: (128,128),
+    dataset.tinyimagenet: (224, 224)
 }
 
 dataset_classes = {
     dataset.cifar10: 10,
     dataset.cifar100: 100,
     dataset.celebA: 8,
+    dataset.tinyimagenet: 200
 }
 
 dataset_norms = {
    dataset.cifar10:{'mean': [0.4914, 0.4822, 0.4465], 'std': [0.2023, 0.1994, 0.2010]},
    dataset.cifar100:{'mean': [0.5071, 0.4865, 0.4409], 'std': [0.2673, 0.2564, 0.2762]},
    dataset.celebA:{'mean': [0.506, 0.425, 0.384], 'std': [0.266, 0.245, 0.241]},
+   dataset.tinyimagenet:{'mean': [0.4802, 0.4481, 0.3975], 'std':[0.2770, 0.2691, 0.2821]}
 }
 
 p = Path('campaign_path')
@@ -111,8 +121,7 @@ configs = [
         ],
         np.logspace(-1, -3, 5),
        [
-           dataset.cifar100,
-           dataset.celebA,
+         dataset.tinyimagenet
         ])
 ]
 
