@@ -132,7 +132,7 @@ epochs = 1000
 save_model = False
 
 def path_from_config(config):
-    return base_path / (config['dataset'].value + '_'.join(['']+[f'{x}_{y}' for x,y in config['dataset_params'].items()])) / (config['mtype'].value + '_' + config['activation'].value + '_' + '_' + str(config['learning_rate'])[2:6])
+    return base_path / (config['dataset'].value) / (config['mtype'].value + '_' + config['activation'].value + '_' + '_' + str(config['learning_rate'])[2:6])
 
 
 def train(config, path, seed):
