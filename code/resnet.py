@@ -223,7 +223,7 @@ class HResNet(nn.Module):
 
     def _forward_impl(self, x: Tensor) -> Tensor:
         # See note [TorchScript super()]
-        x = self.embd(x)
+        x = self.embd(x.flatten(start_dim=1))
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
