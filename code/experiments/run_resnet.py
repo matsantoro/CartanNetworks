@@ -12,8 +12,8 @@ from geoopt.optim import RiemannianSGD
 import geoopt
 from geoopt.manifolds import Sphere
 
-#sys.path.append(os.path.abspath("HyperbolicCV/code"))
-#from classification.models.classifier import ResNetClassifier
+sys.path.append(os.path.abspath("HyperbolicCV/code"))
+from classification.models.classifier import ResNetClassifier
 
 from torchvision.models.resnet import ResNet, BasicBlock
 
@@ -21,24 +21,24 @@ class ResNet18(ResNet):
     def __init__(self, block=BasicBlock, layers=[2,2,2,2], num_classes = 1000, zero_init_residual = False, groups = 1, width_per_group = 64, replace_stride_with_dilation = None, norm_layer = None):
        super().__init__(block, layers, num_classes, zero_init_residual, groups, width_per_group, replace_stride_with_dilation, norm_layer)
 
-#class FullyResNet(ResNetClassifier):
-#       def __init__(self, 
-#            num_classes = 200
-#        ):
-#        super().__init__(
-#            num_layers=18,
-#            enc_type = 'lorentz', 
-#            dec_type = 'lorentz',
-#            enc_kwargs=dict(),
-#            dec_kwargs={
-#               'clip_r' : 1.,
-#                'embed_dim' : 512,
-#                'num_classes' : num_classes,
-#                'type':'mlr',
-#                'k':1.,
-#                'learn_k':False
-#            }
-#            )
+class FullyResNet(ResNetClassifier):
+       def __init__(self, 
+            num_classes = 200
+        ):
+        super().__init__(
+            num_layers=18,
+            enc_type = 'lorentz', 
+            dec_type = 'lorentz',
+            enc_kwargs=dict(),
+            dec_kwargs={
+               'clip_r' : 1.,
+                'embed_dim' : 512,
+                'num_classes' : num_classes,
+                'type':'mlr',
+                'k':1.,
+                'learn_k':False
+            }
+            )
 
 import numpy as np
 
@@ -79,8 +79,12 @@ class CelebAThreeAttrClassification(CelebA):
 
         return image, torch.tensor(class_label, dtype=torch.long)
 
-class TinyImagenet(ImageFolder):
+class TinyImagenet224(ImageFolder):
    def __init__(self, root='files/tiny-224', train=True, transform = None, target_transform = None, is_valid_file = None, allow_empty = False):
+      super().__init__(root + ('/train' if train else '/test'), transform, target_transform, is_valid_file = is_valid_file, allow_empty = allow_empty)
+
+class TinyImagenet(ImageFolder):
+   def __init__(self, root='files/tiny-imagenet-200', train=True, transform = None, target_transform = None, is_valid_file = None, allow_empty = False):
       super().__init__(root + ('/train' if train else '/test'), transform, target_transform, is_valid_file = is_valid_file, allow_empty = allow_empty)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -90,6 +94,7 @@ class dataset(Enum):
     cifar100 = 'cifar100'
     celebA = 'celebA'
     tinyimagenet = 'tiny_imagenet'
+    tinyimagenet224 = 'tiny_imagenet_224'
 
 
 
@@ -98,7 +103,8 @@ datasetdict = {
     dataset.cifar10: CIFAR10,
     dataset.cifar100: CIFAR100,
     dataset.celebA: CelebAThreeAttrClassification,
-    dataset.tinyimagenet: TinyImagenet
+    dataset.tinyimagenet: TinyImagenet,
+    dataset.tinyimagenet224: TinyImagenet224
 }
 
 dataset_channels = {
@@ -112,21 +118,24 @@ dataset_input_sizes = {
     dataset.cifar10: (32,32),
     dataset.cifar100: (32,32),
     dataset.celebA: (128,128),
-    dataset.tinyimagenet: (224, 224)
+    dataset.tinyimagenet: (64, 64),
+    dataset.tinyimagenet224: (224, 224)
 }
 
 dataset_classes = {
     dataset.cifar10: 10,
     dataset.cifar100: 100,
     dataset.celebA: 8,
-    dataset.tinyimagenet: 200
+    dataset.tinyimagenet: 200,
+    dataset.tinyimagenet224: 200
 }
 
 dataset_norms = {
    dataset.cifar10:{'mean': [0.4914, 0.4822, 0.4465], 'std': [0.2023, 0.1994, 0.2010]},
    dataset.cifar100:{'mean': [0.5071, 0.4865, 0.4409], 'std': [0.2673, 0.2564, 0.2762]},
    dataset.celebA:{'mean': [0.506, 0.425, 0.384], 'std': [0.266, 0.245, 0.241]},
-   dataset.tinyimagenet:{'mean': [0.4802, 0.4481, 0.3975], 'std':[0.2770, 0.2691, 0.2821]}
+   dataset.tinyimagenet224:{'mean': [0.48051679134368896, 0.44834452867507935, 0.3978164494037628], 'std':[0.2666704058647156, 0.2584282457828522, 0.27223914861679077]},
+   dataset.tinyimagenet:{'mean': [0.48024600744247437, 0.44807225465774536, 0.39754778146743774], 'std':[0.2769860327243805, 0.26906439661979675, 0.28208184242248535]}
 }
 
 p = Path('campaign_path')
@@ -173,7 +182,7 @@ model_dict = {
     model_type.alexnet: models.AlexNetCifar,
     model_type.hresnet18: HResNet18,
     model_type.hresnet34: HResNet34,
-#    model_type.fresnet18: FullyResNet,
+    model_type.fresnet18: FullyResNet,
     model_type.resnet18: ResNet18
 }
 
@@ -183,17 +192,17 @@ configs = [
      'dataset': w} for x,z,w in
      product(
         [
-#           model_type.hresnet34,
-#            model_type.fresnet18
+            model_type.hresnet18,
+            model_type.fresnet18,
             model_type.resnet18
         ],
-        np.logspace(-1, -3, 5),
+        [np.logspace(-1, -3, 5)[1]],
        [
          dataset.tinyimagenet
         ])
 ]
 
-base_path = Path('data/resnet')
+base_path = Path('data/resnet_new')
 base_path.mkdir(exist_ok = True, parents=True)
 reps = 5
 epochs = 1000
@@ -213,14 +222,10 @@ def train(config, path, seed):
     criterion = nn.CrossEntropyLoss()
     rows = []
     transform_train = torchvision.transforms.Compose([
-        torchvision.transforms.Resize((256, 256)),
-        torchvision.transforms.RandomCrop(224),
-        torchvision.transforms.RandomHorizontalFlip(),
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize(**dataset_norms[config['dataset']])
     ])
     transform_test = torchvision.transforms.Compose([
-        torchvision.transforms.Resize((224, 224)),
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize(**dataset_norms[config['dataset']])
     ])
@@ -231,11 +236,11 @@ def train(config, path, seed):
                               batch_size=64,
                               shuffle=True,
                               drop_last=True,
-                              num_workers=16,
+                              num_workers=2,
                               pin_memory=True)
     test_dataset = datasetdict[config['dataset']](train=False, transform=transform_test,)
     test_loader = DataLoader(test_dataset,
-                              batch_size = 1024,
+                              batch_size = 2,
                               shuffle=True,
                               drop_last=True)
     
@@ -244,20 +249,7 @@ def train(config, path, seed):
     model.to(device)
     pbar = tqdm(range(epochs))
 
-    circular_params = []
-    other_params = []
-    for name, param in model.named_parameters():
-        if isinstance(param, geoopt.ManifoldParameter):
-          if type(param.manifold) == Sphere:
-            circular_params.append(param)
-          else:
-            other_params.append(param)
-        else:
-            other_params.append(param)
-    optimizer = RiemannianSGD([
-        {"params": circular_params, "lr": lr},
-        {"params": other_params, "lr": lr},
-    ], lr, weight_decay=wd)
+    optimizer = RiemannianSGD(model.params, lr, weight_decay=wd)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, cooldown=10)
     
