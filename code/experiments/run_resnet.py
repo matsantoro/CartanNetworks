@@ -29,14 +29,14 @@ class FullyResNet(ResNetClassifier):
             num_layers=18,
             enc_type = 'lorentz', 
             dec_type = 'lorentz',
-            enc_kwargs=dict(),
+            enc_kwargs={'k':1.},
             dec_kwargs={
-               'clip_r' : 1.,
+               'clip_r' : 4.,
                 'embed_dim' : 512,
                 'num_classes' : num_classes,
                 'type':'mlr',
                 'k':1.,
-                'learn_k':False
+                'learn_k':True
             }
             )
 
@@ -159,7 +159,7 @@ class HResNet34(resnet.HResNet):
                  width_per_group = 64, 
                  replace_stride_with_dilation = None,
                  norm_layer = None,
-                 input_shape = (3, 224, 224)):
+                 input_shape = (3, 64, 64)):
        super().__init__(block, layers, num_classes, zero_init_residual, groups, width_per_group, replace_stride_with_dilation, norm_layer, input_shape)
 
 class HResNet18(resnet.HResNet):
@@ -172,7 +172,7 @@ class HResNet18(resnet.HResNet):
                  width_per_group = 64, 
                  replace_stride_with_dilation = None,
                  norm_layer = None,
-                 input_shape = (3, 224, 224)
+                 input_shape = (3, 64, 64)
                  ):
        super().__init__(block, layers, num_classes, zero_init_residual, groups, width_per_group, replace_stride_with_dilation, norm_layer, input_shape)
 
@@ -192,11 +192,11 @@ configs = [
      'dataset': w} for x,z,w in
      product(
         [
-            model_type.hresnet18,
+           # model_type.hresnet18,
             model_type.fresnet18,
-            model_type.resnet18
+           # model_type.resnet18
         ],
-        [np.logspace(-1, -3, 5)[1]],
+        np.logspace(-1, -3, 5),
        [
          dataset.tinyimagenet
         ])
@@ -233,14 +233,14 @@ def train(config, path, seed):
 
     train_dataset = datasetdict[config['dataset']](train=True, transform=transform_train,)
     train_loader = DataLoader(train_dataset,
-                              batch_size=64,
+                              batch_size=32,
                               shuffle=True,
                               drop_last=True,
                               num_workers=2,
                               pin_memory=True)
     test_dataset = datasetdict[config['dataset']](train=False, transform=transform_test,)
     test_loader = DataLoader(test_dataset,
-                              batch_size = 2,
+                              batch_size = 32,
                               shuffle=True,
                               drop_last=True)
     
@@ -249,7 +249,7 @@ def train(config, path, seed):
     model.to(device)
     pbar = tqdm(range(epochs))
 
-    optimizer = RiemannianSGD(model.params, lr, weight_decay=wd)
+    optimizer = RiemannianSGD(model.parameters(), lr, weight_decay=wd)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, cooldown=10)
     
@@ -328,12 +328,12 @@ def train(config, path, seed):
     df.to_csv(path / (str(seed) +  '_data.csv'))
 
 if __name__ == '__main__':
-    #task_id = int(os.environ['TASK_ID'])
-    task_id = 0
+    task_id = int(os.environ['TASK_ID'])
+    #task_id = 0
     print(task_id)
     l = list(configs)
     print(len(l[task_id::20]))
-    for config in l[task_id::]:
+    for config in l[task_id::20]:
         path = path_from_config(config)
         path.mkdir(exist_ok=True, parents=True)
         done = len(list(path.glob('*.csv')))
