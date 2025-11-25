@@ -18,7 +18,7 @@ from classification.models.classifier import ResNetClassifier
 from torchvision.models.resnet import ResNet, BasicBlock
 
 class ResNet18(ResNet):
-    def __init__(self, block=BasicBlock, layers=[2,2,2,2], num_classes = 1000, zero_init_residual = False, groups = 1, width_per_group = 64, replace_stride_with_dilation = None, norm_layer = None):
+    def __init__(self, block=BasicBlock, layers=[2,2,2,2], num_classes = 1000, zero_init_residual = False, groups = 1, width_per_group = 64, replace_stride_with_dilation = None, norm_layer = None, input_shape=None):
        super().__init__(block, layers, num_classes, zero_init_residual, groups, width_per_group, replace_stride_with_dilation, norm_layer)
 
 class FullyResNet(ResNetClassifier):
@@ -80,12 +80,12 @@ class CelebAThreeAttrClassification(CelebA):
         return image, torch.tensor(class_label, dtype=torch.long)
 
 class TinyImagenet224(ImageFolder):
-   def __init__(self, root='files/tiny-224', train=True, transform = None, target_transform = None, is_valid_file = None, allow_empty = False):
-      super().__init__(root + ('/train' if train else '/test'), transform, target_transform, is_valid_file = is_valid_file, allow_empty = allow_empty)
+   def __init__(self, root='files/', train=True, transform = None, target_transform = None, is_valid_file = None, allow_empty = False):
+      super().__init__(root + ('tiny-224/train' if train else 'tiny-224/test'), transform, target_transform, is_valid_file = is_valid_file, allow_empty = allow_empty)
 
 class TinyImagenet(ImageFolder):
-   def __init__(self, root='files/tiny-imagenet-200', train=True, transform = None, target_transform = None, is_valid_file = None, allow_empty = False):
-      super().__init__(root + ('/train' if train else '/test'), transform, target_transform, is_valid_file = is_valid_file, allow_empty = allow_empty)
+   def __init__(self, root='files/', train=True, transform = None, target_transform = None, is_valid_file = None, allow_empty = False):
+      super().__init__(root + ('tiny-imagenet-200/train' if train else 'tiny-imagenet-200/test'), transform, target_transform, is_valid_file = is_valid_file, allow_empty = allow_empty)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -117,7 +117,7 @@ dataset_channels = {
 dataset_input_sizes = {
     dataset.cifar10: (32,32),
     dataset.cifar100: (32,32),
-    dataset.celebA: (128,128),
+    dataset.celebA: (224,224),
     dataset.tinyimagenet: (64, 64),
     dataset.tinyimagenet224: (224, 224)
 }
@@ -192,17 +192,18 @@ configs = [
      'dataset': w} for x,z,w in
      product(
         [
-           # model_type.hresnet18,
-            model_type.fresnet18,
-           # model_type.resnet18
+           model_type.hresnet18,
+           model_type.resnet18
         ],
         np.logspace(-1, -3, 5),
        [
-         dataset.tinyimagenet
+         dataset.celebA,
+         dataset.cifar100,
+         dataset.cifar10
         ])
 ]
 
-base_path = Path('data/resnet_new')
+base_path = Path('data/all_conv')
 base_path.mkdir(exist_ok = True, parents=True)
 reps = 5
 epochs = 1000
@@ -222,30 +223,32 @@ def train(config, path, seed):
     criterion = nn.CrossEntropyLoss()
     rows = []
     transform_train = torchvision.transforms.Compose([
+        torchvision.transforms.Resize(size=dataset_input_sizes[config['dataset']]),
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize(**dataset_norms[config['dataset']])
     ])
     transform_test = torchvision.transforms.Compose([
+        torchvision.transforms.Resize(size=dataset_input_sizes[config['dataset']]),
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize(**dataset_norms[config['dataset']])
     ])
 
 
-    train_dataset = datasetdict[config['dataset']](train=True, transform=transform_train,)
+    train_dataset = datasetdict[config['dataset']](root='files', train=True, transform=transform_train,)
     train_loader = DataLoader(train_dataset,
-                              batch_size=128,
+                              batch_size=64,
                               shuffle=True,
                               drop_last=True,
                               num_workers=2,
                               pin_memory=True)
-    test_dataset = datasetdict[config['dataset']](train=False, transform=transform_test,)
+    test_dataset = datasetdict[config['dataset']](root='files', train=False, transform=transform_test,)
     test_loader = DataLoader(test_dataset,
-                              batch_size = 128,
+                              batch_size = 64,
                               shuffle=True,
                               drop_last=True)
     
     
-    model = model_dict[config['mtype']](num_classes = dataset_classes[config['dataset']])
+    model = model_dict[config['mtype']](num_classes = dataset_classes[config['dataset']], input_shape = (3, *dataset_input_sizes[config['dataset']]))
     model.to(device)
     pbar = tqdm(range(epochs))
 
@@ -328,12 +331,12 @@ def train(config, path, seed):
     df.to_csv(path / (str(seed) +  '_data.csv'))
 
 if __name__ == '__main__':
-    task_id = int(os.environ['TASK_ID'])
-    #task_id = 0
+#    task_id = int(os.environ['TASK_ID'])
+    task_id = 0
     print(task_id)
     l = list(configs)
     print(len(l[task_id::20]))
-    for config in l[task_id::20]:
+    for config in l[task_id::]:
         path = path_from_config(config)
         path.mkdir(exist_ok=True, parents=True)
         done = len(list(path.glob('*.csv')))
