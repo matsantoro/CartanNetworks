@@ -194,18 +194,20 @@ configs = [
      'dataset': w} for x,z,w in
      product(
         [
-           model_type.hresnet18,
+          # model_type.hresnet18,
            model_type.resnet18
         ],
         np.logspace(-1, -3, 5),
        [
          dataset.celebA,
          dataset.cifar100,
-         dataset.cifar10
+         dataset.cifar10,
+         dataset.tinyimagenet,
+         dataset.tinyimagenet224
         ])
 ]
 
-base_path = Path('data/all_conv')
+base_path = Path('data/all_conv_eucl')
 base_path.mkdir(exist_ok = True, parents=True)
 reps = 5
 epochs = 1000
@@ -236,14 +238,14 @@ def train(config, path, seed):
     ])
 
 
-    train_dataset = datasetdict[config['dataset']](root='files', train=True, transform=transform_train,)
+    train_dataset = datasetdict[config['dataset']](root='files/', train=True, transform=transform_train,)
     train_loader = DataLoader(train_dataset,
                               batch_size=64,
                               shuffle=True,
                               drop_last=True,
                               num_workers=2,
                               pin_memory=True)
-    test_dataset = datasetdict[config['dataset']](root='files', train=False, transform=transform_test,)
+    test_dataset = datasetdict[config['dataset']](root='files/', train=False, transform=transform_test,)
     test_loader = DataLoader(test_dataset,
                               batch_size = 64,
                               shuffle=True,
@@ -268,7 +270,7 @@ def train(config, path, seed):
     
     param_groups = [
         {'params': body_params, 'lr': lr},
-        {'params': fc_params, 'lr': min(lr, 1e-3)}
+        {'params': fc_params, 'lr': lr}
     ]
     
     optimizer = RiemannianSGD(param_groups,lr=lr, weight_decay=wd)
@@ -350,12 +352,12 @@ def train(config, path, seed):
     df.to_csv(path / (str(seed) +  '_data.csv'))
 
 if __name__ == '__main__':
-#    task_id = int(os.environ['TASK_ID'])
-    task_id = 0
+    task_id = int(os.environ['TASK_ID'])
+#    task_id = 0
     print(task_id)
     l = list(configs)
     print(len(l[task_id::20]))
-    for config in l[task_id::]:
+    for config in l[task_id::20]:
         path = path_from_config(config)
         path.mkdir(exist_ok=True, parents=True)
         done = len(list(path.glob('*.csv')))
